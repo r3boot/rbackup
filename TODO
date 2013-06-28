@@ -1,0 +1,10 @@
+# TODO: split up script into package
+# TODO: move config to /etc
+# TODO: add network restrictions check
+# TODO: check for package managers and make install
+# TODO: add notification support
+# TODO: rework LVMWrapper class
+# TODO: fix remote backup path and named archives
+# TODO: add script to recreate excluded directories
+# TODO: add logging to file
+# TODO: add backup statistics

@@ -1,0 +1,104 @@
+#!/usr/bin/env python2
+
+# TODO: split up script into package
+# TODO: move config to /etc
+# TODO: add network restrictions check
+# TODO: check for package managers and make install
+# TODO: add notification support
+# TODO: rework LVMWrapper class
+# TODO: fix remote backup path and named archives
+# TODO: add script to recreate excluded directories
+# TODO: add logging to file
+# TODO: add backup statistics
+
+import argparse
+import logging
+import os
+import sys
+
+sys.path.append('.')
+
+from rbackup.lvm        import LVMWrapper
+from rbackup.duplicity  import DuplicityWrapper
+
+__description__ = 'Duplicity wrapper'
+
+_d_debug = False
+_d_snapshots = False
+_d_snapshot_size = 1
+_d_cleanup_snapshots = False
+
+ll2str = {
+    10: 'DEBUG',
+    20: 'INFO',
+    30: 'WARNING',
+    40: 'ERROR',
+    50: 'CRITICAL'
+}
+
+def main():
+    parser = argparse.ArgumentParser(description=__description__)
+    parser.add_argument('-D', dest='debug', action='store_true',
+        default=_d_debug, help='Enable debugging')
+
+    parser.add_argument('-r', metavar='HOST:/PATH', dest='remote',
+        type=str, default=False, help='Backup server and path')
+
+    parser.add_argument('-s', metavar='VGNAME', dest='snapshots',
+        action='store', default=_d_snapshots,
+        help='Enable LVM snapshots (requires root)')
+
+    parser.add_argument('--ssize', metavar='SIZE', dest='snap_size',
+        action='store', type=int, default=_d_snapshot_size,
+        help='Size of a snapshot')
+
+    parser.add_argument('--scleanup', dest='cleanup_snapshots',
+        action='store_true', default=_d_cleanup_snapshots,
+        help='Cleanup all leftover snapshots')
+
+    args = parser.parse_args()
+
+    logger = logging.getLogger('main')
+    if args.debug:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+    logger.setLevel(log_level)
+
+    console_logger = logging.StreamHandler()
+    console_logger.setLevel(log_level)
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s')
+    console_logger.setFormatter(formatter)
+    logger.addHandler(console_logger)
+
+    logger.debug('logging at %s' % ll2str[log_level])
+
+    lvm = LVMWrapper(logger, args.snapshots, args.snap_size)
+
+    if args.cleanup_snapshots:
+        lvm.cleanup_snapshots()
+        return
+
+    if args.snapshots:
+        if os.geteuid() is not 0:
+            logger.error('LVM snapshots require root rights')
+            return 1
+
+        snapshot_timestamp = lvm.create_snapshots()
+
+    if args.snapshots:
+        os.chdir('/.snapshot')
+    else:
+        os.chdir('/')
+
+    duplicity = DuplicityWrapper(logger, args.remote)
+    duplicity.backup('.')
+
+    if args.snapshots:
+        os.chdir('/')
+        lvm.remove_snapshots(snapshot_timestamp)
+
+    return
+
+if __name__ == '__main__':
+    sys.exit(main())
