@@ -29,7 +29,7 @@ class LVM(BaseClass):
             all_vgs_len = len(all_vgs)
             if all_vgs_len == 0:
                 self.error('no volume groups found')
-            elif all_vgs_len > 0 and not self._vg_name:
+            elif all_vgs_len > 1 and not self._vg_name:
                 self.error('multiple volume groups found')
             self._vg_name = all_vgs[0]
 
@@ -107,22 +107,6 @@ class LVM(BaseClass):
 
         return int(round(pe_size * free_pe))
 
-    def get_mounts(self):
-        mounts = {}
-        for line in open('/proc/mounts', 'r').readlines():
-            match = self._re_mount.search(line)
-            if match:
-                device = match.group(1)
-                mountpoint = match.group(2)
-                filesystem = match.group(3)
-
-                mounts[mountpoint] = {
-                    'device':       device,
-                    'filesystem':   filesystem,
-                }
-
-        return mounts
-
     def mksnapshot(self, mountpoint, mount_data, timestamp):
         lvm_info = os.path.basename(mount_data['device'])
         (vg_name, lv_name) = lvm_info.split('-')
@@ -155,13 +139,13 @@ class LVM(BaseClass):
         self.run(shlex.split(cmd))
 
     def create_snapshots(self):
-        mounts = self.get_mounts()
-        mountpoints = mounts.keys()
+        mountpoints = self._filesystems.keys()
         mountpoints.sort()
 
         free_vg_space = self.get_free_vg_space(self._vg_name)
 
-        if (len(mounts.keys()) * self._snap_size) > (free_vg_space / 1024):
+        num_filesystems = len(self._filesystems.keys())
+        if (num_filesystems * self._snap_size) > (free_vg_space / 1024):
             self.error('not enough free space in VG {0}'.format(self._vg_name))
 
         if not os.path.exists(self._snap_dir):
@@ -172,11 +156,12 @@ class LVM(BaseClass):
 
         timestamp = int(time.time())
         for mountpoint in mountpoints:
-            device = mounts[mountpoint]['device']
+            device = self._filesystems[mountpoint]['device']
             snap_mountpoint = self._snap_dir + mountpoint
 
             if self.is_lv(device):
-                self.mksnapshot(snap_mountpoint, mounts[mountpoint], timestamp)
+                self.mksnapshot(snap_mountpoint, self._filesystems[mountpoint],
+                        timestamp)
             else:
                 self.do_bind_mount(mountpoint, snap_mountpoint)
 

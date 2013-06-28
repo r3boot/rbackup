@@ -17,6 +17,9 @@ class Filesystems(BaseClass):
         except KeyError:
             self.error('no such filesystem')
 
+    def keys(self):
+        return self._filesystems.keys()
+
     def shorten_mapper_path(self, path):
         if not '/mapper/' in path:
             return path

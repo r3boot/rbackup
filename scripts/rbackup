@@ -1,16 +1,5 @@
 #!/usr/bin/env python2
 
-# TODO: split up script into package
-# TODO: move config to /etc
-# TODO: add network restrictions check
-# TODO: check for package managers and make install
-# TODO: add notification support
-# TODO: rework LVMWrapper class
-# TODO: fix remote backup path and named archives
-# TODO: add script to recreate excluded directories
-# TODO: add logging to file
-# TODO: add backup statistics
-
 import argparse
 import logging
 import os
@@ -27,7 +16,8 @@ __description__ = 'Duplicity wrapper'
 
 _d_debug = False
 _d_setup = False
-_d_snapshots = False
+_d_use_snapshots = 'auto'
+_d_volumegroup = 'vg00'
 _d_snapshot_size = 1
 _d_cleanup_snapshots = False
 
@@ -44,16 +34,18 @@ def main():
     parser.add_argument('-D', dest='debug', action='store_true',
         default=_d_debug, help='Enable debugging')
 
-    parser.add_argument('-r', metavar='HOST:/PATH', dest='remote',
-        type=str, default=False, help='Backup server and path')
+    parser.add_argument('-s', metavar='OPTION', dest='use_snapshots',
+        action='store', default=_d_use_snapshots,
+        help='Enable snapshotted backups (auto/yes/no) [{0}]'.format(
+            _d_use_snapshots))
 
-    parser.add_argument('-s', metavar='VGNAME', dest='snapshots',
-        action='store', default=_d_snapshots,
-        help='Enable LVM snapshots (requires root)')
+    parser.add_argument('-V', metavar='VGNAME', dest='volumegroup',
+        action='store', default=_d_volumegroup,
+        help='Volume group for snapshots [{0}]'.format(_d_volumegroup))
 
     parser.add_argument('--ssize', metavar='SIZE', dest='snap_size',
         action='store', type=int, default=_d_snapshot_size,
-        help='Size of a snapshot in GB')
+        help='Size of a snapshot in GB [{0}]'.format(_d_snapshot_size))
 
     parser.add_argument('--setup', dest='setup', action='store_true',
         default=_d_setup, help='Setup SSH configuration')
@@ -96,29 +88,26 @@ def main():
         config.create_config(host, user, path)
         return
 
-    config.verify_all()
+    config.update()
 
     filesystems = Filesystems(logger)
-    lvm = LVM(logger, filesystems, args.snapshots, args.snap_size)
-    duplicity = Duplicity(logger, args.remote)
+    lvm = LVM(logger, filesystems, args.use_snapshots, args.snap_size)
+    duplicity = Duplicity(logger, config)
 
-    """
     if args.cleanup_snapshots:
         lvm.cleanup_snapshots()
         return
-    elif args.snapshots:
+    elif args.use_snapshots in ['yes', 'auto']:
         snapshot_timestamp = lvm.create_snapshots()
         os.chdir('/.snapshot')
     else:
         os.chdir('/')
 
-    duplicity = DuplicityWrapper(logger, args.remote)
     duplicity.backup('.')
 
-    if args.snapshots:
+    if args.use_snapshots in ['yes', 'auto']:
         os.chdir('/')
         lvm.remove_snapshots(snapshot_timestamp)
-    """
 
     return
 

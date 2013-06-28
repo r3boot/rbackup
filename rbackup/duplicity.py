@@ -2,28 +2,23 @@ import os
 import re
 import shlex
 import socket
+import tempfile
 
 from rbackup import BaseClass
 
-class DuplicityWrapper(BaseClass):
+class Duplicity(BaseClass):
     _re_identityfile = re.compile('.*IdentityFile[\ \t]+(/.*)')
 
-    def __init__(self, logger, remote, max_incrementals=5,
-            cfg_dir='~/.config/backup', cache_dir='~/.cache/duplicity'):
+    def __init__(self, logger, config):
         BaseClass.__init__(self, logger)
-        self.__cfg_dir = cfg_dir
-        self.__cache_dir = os.path.expanduser(cache_dir)
-        self.__hostname = socket.gethostname().split('.')[0]
-        (self.__host, self.__path) = remote.split(':')
-        self.__destination = 'rsync://{0}/{1}'.format(self.__host, self.__path)
-        self.__max_incrementals = max_incrementals
-
-        self.__ssh_config = os.path.expanduser('{0}/{1}_ssh_config'.format(
-            self.__cfg_dir, self.__hostname))
-        self.validate_ssh_config()
+        self._cfg = config
+        self._destination = 'rsync://{0}/{1}'.format(
+                self._cfg['remote_host'], self._cfg['remote_path'])
 
     def _ssh(self, options):
-        cmd = ['ssh', '-F', self.__ssh_config, self.__host]
+        cmd = 'ssh -F {0} {1}'.format(self._cfg['ssh_config'],
+                self._cfg['remote_host'])
+        cmd = shlex.split(cmd)
         options = shlex.split(options)
         return self.run(cmd + options)
 
@@ -32,70 +27,39 @@ class DuplicityWrapper(BaseClass):
         options = shlex.split(options)
         return self.run(cmd + options)
 
-    def validate_ssh_config(self):
-        if not os.path.exists(self.__ssh_config):
-            self.error('{0} does not exist'.format(self.__ssh_config))
-
-        identity_file = None
-        for line in open(self.__ssh_config, 'r').readlines():
-            match = self._re_identityfile.search(line)
-            if match:
-                identity_file = match.group(1)
-
-        if not identity_file:
-            self.error('no IdentityFile specified in {0}'.format(
-                self.__ssh_config))
-
-        if not os.path.exists(identity_file):
-            self.error('{0} does not exist'.format(identity_file))
-
-    def has_backup_dir(self, backup_name):
-        cmd = 'ls -d {0}/{1} 2>&1'.format(self.__path, backup_name)
+    def has_backup_dir(self):
+        cmd = 'ls -d {0} 2>&1'.format(self._cfg['remote_path'])
         result = self._ssh(cmd)
         return 'not found' not in result
 
-    def create_backup_dir(self, backup_name):
-        cmd = 'mkdir -p {0}/{1}'.format(self.__path, backup_name)
-        return self._ssh(cmd)
-
-    def has_backups(self, backup_name):
-        cmd = 'ls {0}/{1} 2>/dev/null'.format(self.__path, backup_name)
+    def has_backups(self):
+        cmd = 'ls {0} 2>/dev/null'.format(self.__path)
         result = self._ssh(cmd)
         if not result or len(result) == 0:
             return False
         return True
 
-    def get_number_of_incrementals(self, backup_name):
-        cmd = 'ls {0}/{1}/*-inc*.manifest 2>/dev/null | wc -l'.format(
-            self.__path, backup_name)
+    def get_number_of_incrementals(self):
+        cmd = 'ls {0}/*-inc*.manifest 2>/dev/null | wc -l'.format(self.__path)
         result = self._ssh(cmd)
         return int(result)
 
-    def get_excludes_file(self, backup_name):
-        return os.path.expanduser('{0}/{1}_excluded.list'.format(
-            self.__cfg_dir, backup_name))
-
-    def has_excludes(self, backup_name):
-        excludes_file = self.get_excludes_file(backup_name)
-        return os.path.exists(excludes_file)
-
-    def run_duplicity_backup(self, backup_type, backup_name, path):
-        exclude_list_option = ''
-        if self.has_excludes(backup_name):
-            excludes_file = self.get_excludes_file(backup_name)
-            exclude_list_option = ' --exclude-filelist={0}'.format(
-                excludes_file)
+    def run_duplicity_backup(self, backup_type, path):
+        excluded_paths = ''
+        if len(self._cfg['excluded']) > 0:
+            for excluded_path in self._cfg['excluded']:
+                excluded_paths += ' --exclude="{0}"'.format(excluded_path)
 
         rsync_options = ' --rsync-options=\"-e \'ssh -F {0}\'\"'.format(
             self.__ssh_config)
 
         duplicity_cmdline = backup_type \
                     + ' --exclude-device-files' \
-                    + exclude_list_option \
+                    + excluded_paths \
                     + ' --no-encryption' \
                     + rsync_options \
                     + ' {0}'.format(path) \
-                    + ' {0}/{1}'.format(self.__destination, backup_name)
+                    + ' {0}'.format(self._destination)
 
         result = self._duplicity(duplicity_cmdline)
 
@@ -134,21 +98,20 @@ class DuplicityWrapper(BaseClass):
             self.warning('{0} does not exist'.format(path))
             return
 
-        backup_name = 'laptop'
         num_incrementals = self.get_number_of_incrementals(backup_name)
 
-        if not self.has_backup_dir(backup_name):
-            self.create_backup_dir(backup_name)
-            self.full_backup(backup_name, path)
+        if not self.has_backup_dir():
+            self.error('{0}:{1} does not exist'.format(
+                self._cfg['remote_host'], self._cfg['remote_path']))
 
-        elif not self.has_backups(backup_name):
-            self.full_backup(backup_name, path)
+        elif not self.has_backups():
+            self.full_backup(path)
 
         elif num_incrementals >= self.__max_incrementals:
-            self.full_backup(backup_name, path)
-            self.run_duplicity_cleanup(backup_name)
+            self.full_backup(path)
+            self.run_duplicity_cleanup()
 
         else:
-            self.incremental_backup(backup_name, path)
+            self.incremental_backup(path)
 
         self.info('backup completed')

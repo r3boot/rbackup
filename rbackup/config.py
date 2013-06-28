@@ -25,6 +25,7 @@ remote_user: %USER%
 remote_path: %PATH%
 ssh_config: /etc/rbackup/ssh_config
 use_snapshots: auto
+max_incrementals: 6
 excluded:
  - /dev
  - /sys
@@ -48,7 +49,7 @@ excluded:
         try:
             return self._config[cfgitem]
         except KeyError:
-            self.error('no such configuration item')
+            self.error('no such configuration item {0}'.format(cfgitem))
 
     def update(self):
         self._config = self.verify_all()
@@ -57,6 +58,7 @@ excluded:
         self.verify_config_paths()
         config = self.verify_yaml()
         self.verify_ssh_config(config)
+        return config
 
     def verify_config_paths(self):
         if not os.path.exists(self._cfg_dir):
