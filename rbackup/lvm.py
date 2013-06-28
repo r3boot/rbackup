@@ -6,8 +6,7 @@ import time
 
 from rbackup import BaseClass
 
-class LVMWrapper(BaseClass):
-    _re_mount = re.compile('^(/dev/.*)\ (/[a-zA-Z0-9-_\./]*)\ ([ex][xf][ts]).*')
+class LVM(BaseClass):
     _re_lv_path = re.compile('\ +LV Path\ .*\ (/.*)')
     _re_lv_path = re.compile('\ +LV Name\ .*\ (/.*)')
     _re_no_such_vg = re.compile('\ +Volume group .* not found')
@@ -15,12 +14,51 @@ class LVMWrapper(BaseClass):
     _re_vg_free_pe = re.compile('\ +Free  PE / Size.*\ ([0-9]+)\ .*')
     _re_lvs_snapshot = re.compile('\ +([a-zA-Z0-9]+)_([0-9]+)\ .*')
 
-    def __init__(self, logger, vg_name='vg00', snap_size=1,
-            snap_dir='/.snapshot'):
+    def __init__(self, logger, filesystems, use_snapshots='auto', snap_size=1,
+            vg_name=None, snap_dir='/.snapshot'):
         BaseClass.__init__(self, logger)
+        self._filesystems = filesystems
         self._vg_name = vg_name
         self._snap_size = snap_size
         self._snap_dir = snap_dir
+        self.setup_snapshots(use_snapshots)
+
+    def setup_snapshots(self, use_snapshots):
+        if use_snapshots == 'auto':
+            all_vgs = self.get_vgs()
+            all_vgs_len = len(all_vgs)
+            if all_vgs_len == 0:
+                self.error('no volume groups found')
+            elif all_vgs_len > 0 and not self._vg_name:
+                self.error('multiple volume groups found')
+            self._vg_name = all_vgs[0]
+
+        elif use_snapshots:
+            all_vgs = self.get_vgs()
+            if not self._vg_name:
+                self.error('no volume group specified')
+            elif self._vg_name not in all_vgs:
+                self.error('volume group {0} does not exist')
+
+    def get_vgs(self):
+        vgs = []
+        results = self.run(['vgs'])
+        for line in results.split('\n')[1:]:
+            try:
+                vgs.append(line.split()[0])
+            except IndexError:
+                continue
+        return vgs
+
+    def get_lvs(self, vg):
+        lvs = []
+        results = self.run(['lvs'])
+        for line in results.split('\n')[1:]:
+            try:
+                lvs.append(line.split()[0])
+            except IndexError:
+                continue
+        return lvs
 
     def shorten_mapper_path(self, path):
         lvm_info = os.path.basename(path)

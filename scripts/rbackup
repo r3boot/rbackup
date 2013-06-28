@@ -18,9 +18,10 @@ import sys
 
 sys.path.append('.')
 
-from rbackup.config     import Configuration
-from rbackup.lvm        import LVMWrapper
-from rbackup.duplicity  import DuplicityWrapper
+from rbackup.config         import Configuration
+from rbackup.filesystems    import Filesystems
+from rbackup.lvm            import LVM
+from rbackup.duplicity      import Duplicity
 
 __description__ = 'Duplicity wrapper'
 
@@ -78,12 +79,11 @@ def main():
 
     logger.debug('logging at %s' % ll2str[log_level])
 
-    config = Configuration(logger)
-
     if os.geteuid() is not 0:
         logger.error('this application requires root rights')
         return 1
 
+    config = Configuration(logger)
     if args.setup:
         try:
             host = raw_input('Enter remote host: ')
@@ -98,17 +98,16 @@ def main():
 
     config.verify_all()
 
-    """
-    lvm = LVMWrapper(logger, args.snapshots, args.snap_size)
+    filesystems = Filesystems(logger)
+    lvm = LVM(logger, filesystems, args.snapshots, args.snap_size)
+    duplicity = Duplicity(logger, args.remote)
 
+    """
     if args.cleanup_snapshots:
         lvm.cleanup_snapshots()
         return
-
-    if args.snapshots:
+    elif args.snapshots:
         snapshot_timestamp = lvm.create_snapshots()
-
-    if args.snapshots:
         os.chdir('/.snapshot')
     else:
         os.chdir('/')

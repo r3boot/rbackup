@@ -42,6 +42,16 @@ excluded:
         self._cfg_dir = cfg_dir
         self._cfg_file = cfg_dir + '/config.yaml'
         self._identity = cfg_dir + '/id_rsa'
+        self._config = {}
+
+    def __getitem__(self, cfgitem):
+        try:
+            return self._config[cfgitem]
+        except KeyError:
+            self.error('no such configuration item')
+
+    def update(self):
+        self._config = self.verify_all()
 
     def verify_all(self):
         self.verify_config_paths()
