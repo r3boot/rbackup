@@ -18,12 +18,14 @@ import sys
 
 sys.path.append('.')
 
+from rbackup.config     import Configuration
 from rbackup.lvm        import LVMWrapper
 from rbackup.duplicity  import DuplicityWrapper
 
 __description__ = 'Duplicity wrapper'
 
 _d_debug = False
+_d_setup = False
 _d_snapshots = False
 _d_snapshot_size = 1
 _d_cleanup_snapshots = False
@@ -50,7 +52,10 @@ def main():
 
     parser.add_argument('--ssize', metavar='SIZE', dest='snap_size',
         action='store', type=int, default=_d_snapshot_size,
-        help='Size of a snapshot')
+        help='Size of a snapshot in GB')
+
+    parser.add_argument('--setup', dest='setup', action='store_true',
+        default=_d_setup, help='Setup SSH configuration')
 
     parser.add_argument('--scleanup', dest='cleanup_snapshots',
         action='store_true', default=_d_cleanup_snapshots,
@@ -73,6 +78,27 @@ def main():
 
     logger.debug('logging at %s' % ll2str[log_level])
 
+    config = Configuration(logger)
+
+    if os.geteuid() is not 0:
+        logger.error('this application requires root rights')
+        return 1
+
+    if args.setup:
+        try:
+            host = raw_input('Enter remote host: ')
+            user = raw_input('Enter remote user: ')
+            path = raw_input('Enter remote path: ')
+        except KeyboardInterrupt:
+            logger.error('setup aborted')
+            return 1
+
+        config.create_config(host, user, path)
+        return
+
+    config.verify_all()
+
+    """
     lvm = LVMWrapper(logger, args.snapshots, args.snap_size)
 
     if args.cleanup_snapshots:
@@ -80,10 +106,6 @@ def main():
         return
 
     if args.snapshots:
-        if os.geteuid() is not 0:
-            logger.error('LVM snapshots require root rights')
-            return 1
-
         snapshot_timestamp = lvm.create_snapshots()
 
     if args.snapshots:
@@ -97,6 +119,7 @@ def main():
     if args.snapshots:
         os.chdir('/')
         lvm.remove_snapshots(snapshot_timestamp)
+    """
 
     return
 

@@ -1,4 +1,3 @@
-# TODO: split up script into package
 # TODO: move config to /etc
 # TODO: add network restrictions check
 # TODO: check for package managers and make install
