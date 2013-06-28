@@ -107,7 +107,7 @@ def main():
 
     if args.use_snapshots in ['yes', 'auto']:
         os.chdir('/')
-        lvm.remove_snapshots(snapshot_timestamp)
+        lvm.cleanup_snapshots()
 
     return
 

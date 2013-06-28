@@ -15,7 +15,7 @@ class Filesystems(BaseClass):
         try:
             return self._filesystems[mountpoint]
         except KeyError:
-            self.error('no such filesystem')
+            self.error('no such filesystem {0}'.format(mountpoint))
 
     def keys(self):
         return self._filesystems.keys()

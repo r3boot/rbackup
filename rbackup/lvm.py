@@ -60,11 +60,6 @@ class LVM(BaseClass):
                 continue
         return lvs
 
-    def shorten_mapper_path(self, path):
-        lvm_info = os.path.basename(path)
-        (vg, lv) = lvm_info.split('-')
-        return '/dev/{0}/{1}'.format(vg, lv)
-
     def is_lv(self, name):
         if '/mapper/' in name:
             name = self.shorten_mapper_path(name)
@@ -108,11 +103,13 @@ class LVM(BaseClass):
         return int(round(pe_size * free_pe))
 
     def mksnapshot(self, mountpoint, mount_data, timestamp):
-        lvm_info = os.path.basename(mount_data['device'])
-        (vg_name, lv_name) = lvm_info.split('-')
+        snap_mountpoint = self._snap_dir + mountpoint
+
+        lv_name = os.path.basename(self._filesystems[mountpoint]['device'])
 
         snap_lv_name = '{0}_{1}'.format(lv_name, timestamp)
-        snap_lv_device = '/dev/{0}/{1}'.format(self._vg_name, snap_lv_name)
+        snap_lv_device = '{0}_{1}'.format(
+                self._filesystems[mountpoint]['device'], timestamp)
 
         if not os.path.exists(mountpoint):
             self.error('{0} not found'.format(mountpoint))
@@ -121,20 +118,23 @@ class LVM(BaseClass):
             self.warning('snapshot already exists')
             return
 
-        cmd = shlex.split('lvcreate -L {0}G -s -n {1} {2}'.format(
+        cmd = 'lvcreate -L {0}G -s -n {1} {2}'.format(
             self._snap_size,
             snap_lv_name,
-            mount_data['device']))
-        self.run(cmd)
-
-        if mount_data['filesystem'] == 'xfs':
-            cmd = 'mount -o ro,nouuid {0} {1}'.format(snap_lv_device,
-                    mountpoint)
-        else:
-            cmd = 'mount -o ro {0} {1}'.format(snap_lv_device, mountpoint)
+            mount_data['device'])
         self.run(shlex.split(cmd))
+        #print(cmd)
 
-    def do_bind_mount(self, mountpoint, snap_mountpoint):
+        if mount_data['fstype'] == 'xfs':
+            cmd = 'mount -o ro,nouuid {0} {1}'.format(snap_lv_device,
+                    snap_mountpoint)
+        else:
+            cmd = 'mount -o ro {0} {1}'.format(snap_lv_device, snap_mountpoint)
+        self.run(shlex.split(cmd))
+        #print(cmd)
+
+    def do_bind_mount(self, mountpoint):
+        snap_mountpoint = self._snap_dir + mountpoint
         cmd = 'mount --bind -o ro {0} {1}'.format(mountpoint, snap_mountpoint)
         self.run(shlex.split(cmd))
 
@@ -157,44 +157,18 @@ class LVM(BaseClass):
         timestamp = int(time.time())
         for mountpoint in mountpoints:
             device = self._filesystems[mountpoint]['device']
-            snap_mountpoint = self._snap_dir + mountpoint
 
             if self.is_lv(device):
-                self.mksnapshot(snap_mountpoint, self._filesystems[mountpoint],
+                self.mksnapshot(mountpoint, self._filesystems[mountpoint],
                         timestamp)
             else:
-                self.do_bind_mount(mountpoint, snap_mountpoint)
+                self.do_bind_mount(mountpoint)
 
+        self._filesystems.update()
         return timestamp
 
-    def remove_snapshots(self, timestamp):
-        mounts = self.get_mounts()
-        mountpoints = mounts.keys()
-        mountpoints.sort(reverse=True)
-
-        for mountpoint in mountpoints:
-            if not mountpoint.startswith('/.snapshot'):
-                continue
-
-            device = mounts[mountpoint]['device']
-
-            if mountpoint.endswith('/'):
-                mountpoint = mountpoint[:len(mountpoint)-1]
-
-            cmd = 'umount -f {0}'.format(mountpoint)
-            result = self.run(shlex.split(cmd))
-
-            if self.is_lv(device):
-                lvm_info = os.path.basename(mountpoint)
-
-                cmd = 'lvremove -f {0}'.format(device)
-                self.run(shlex.split(cmd))
-
-        os.rmdir(self._snap_dir)
-
     def cleanup_snapshots(self):
-        mounts = self.get_mounts()
-        mountpoints = mounts.keys()
+        mountpoints = self._filesystems.keys()
         mountpoints.sort(reverse=True)
 
         for mountpoint in mountpoints:
@@ -204,13 +178,13 @@ class LVM(BaseClass):
                 cmd = 'umount -f {0}'.format(mountpoint)
                 self.run(shlex.split(cmd))
 
-        mounts = self.get_mounts()
-        mountpoints = mounts.keys()
+        self._filesystems.update()
+        mountpoints = self._filesystems.keys()
         mountpoints.sort(reverse=True)
 
         snapshot_timestamps = self.list_snapshots()
         for mountpoint in mountpoints:
-            device = mounts[mountpoint]['device']
+            device = self._filesystems[mountpoint]['device']
             for timestamp in snapshot_timestamps:
                 snap_device = '{0}_{1}'.format(device, timestamp)
                 if self.is_lv(snap_device):
