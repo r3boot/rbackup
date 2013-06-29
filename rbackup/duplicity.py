@@ -23,8 +23,9 @@ class Duplicity(BaseClass):
         return self.run(cmd + options)
 
     def _duplicity(self, options):
+        #cmd = ['strace', '-f', '-o', '/tmp/out', '-s 4096', 'duplicity']
         cmd = ['duplicity']
-        options = shlex.split(options)
+        print(cmd + options)
         return self.run(cmd + options)
 
     def has_backup_dir(self):
@@ -46,41 +47,49 @@ class Duplicity(BaseClass):
         return int(result)
 
     def run_duplicity_backup(self, backup_type, path):
-        excluded_paths = ''
+        duplicity_options = []
+        excluded_options = ''
         if len(self._cfg['excluded']) > 0:
+            (f, fname) = tempfile.mkstemp(prefix='rbackup-', text=True)
+            fd = os.fdopen(f, 'w')
             for excluded_path in self._cfg['excluded']:
-                excluded_paths += ' --exclude="{0}"'.format(excluded_path)
+                fd.write('.{0}\n'.format(excluded_path))
+            fd.close()
+            excluded_options = '--exclude-filelist={0}'.format(fname)
 
-        rsync_options = ' --rsync-options=\"-e \'ssh -F {0}\'\"'.format(
+        rsync_options = '--rsync-options=\"-e ssh -F {0}\"'.format(
             self._cfg['ssh_config'])
 
-        duplicity_cmdline = backup_type \
-                    + ' --exclude-device-files' \
-                    + excluded_paths \
-                    + ' --no-encryption' \
-                    + rsync_options \
-                    + ' {0}'.format(path) \
-                    + ' {0}'.format(self._destination)
+        duplicity_options.append(backup_type)
+        duplicity_options.append('--exclude-device-files')
+        duplicity_options.append('--no-encryption')
+        duplicity_options.append(excluded_options)
+        duplicity_options.append(rsync_options)
+        duplicity_options.append(path)
+        duplicity_options.append(self._destination)
 
-        result = self._duplicity(duplicity_cmdline)
+
+        result = self._duplicity(duplicity_options)
+        if len(excluded_options) > 0:
+            os.unlink(fname)
 
     def run_duplicity_cleanup(self):
         rsync_options = ' --rsync-options=\"-e \'ssh -F {0}\'\"'.format(
             self.__ssh_config)
 
-        duplicity_cmdline = 'remove-all-but-n-full 1' \
+        duplicity_options = 'remove-all-but-n-full 1' \
             + ' --force' \
             + ' --no-encryption' \
             + rsync_options \
             + ' {0}'.format(self.__destination)
-        result = self._duplicity(duplicity_cmdline)
+        result = self._duplicity(duplicity_options)
 
-        duplicity_cmdline = 'cleanup' \
+        duplicity_options = 'cleanup' \
             + ' --force' \
             + ' --no-encryption' \
             + rsync_options \
             + ' {0}'.format(self.__destination)
-        result = self._duplicity(duplicity_cmdline)
+        result = self._duplicity(duplicity_options)
 
     def full_backup(self, path):
         self.info('starting full backup')
