@@ -25,7 +25,6 @@ class Duplicity(BaseClass):
     def _duplicity(self, options):
         #cmd = ['strace', '-f', '-o', '/tmp/out', '-s 4096', 'duplicity']
         cmd = ['duplicity']
-        print(cmd + options)
         return self.run(cmd + options)
 
     def has_backup_dir(self):

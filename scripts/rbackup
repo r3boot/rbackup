@@ -91,13 +91,16 @@ def main():
 
     config.update()
 
-    networking = Networking(logger)
-    remote_transports = networking.server_is_alive(config['remote_host'])
+    networking = Networking(logger, config)
+    if not networking.on_runon_network():
+        logger.error('not on a trusted network, not running backup')
+        return 1
+
+    remote_transports = networking.server_is_alive()
     if not remote_transports['ipv4'] and not remote_transports['ipv6']:
         logger.error('{0} is unreachable'.format(config['remote_host']))
         return 1
 
-    """
     filesystems = Filesystems(logger)
     lvm = LVM(logger, filesystems, args.use_snapshots, args.snap_size)
     duplicity = Duplicity(logger, config)
@@ -116,8 +119,6 @@ def main():
     if args.use_snapshots in ['yes', 'auto']:
         os.chdir('/')
         lvm.cleanup_snapshots()
-
-    """
 
     return
 

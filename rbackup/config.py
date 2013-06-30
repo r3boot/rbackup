@@ -36,6 +36,8 @@ excluded:
  - /media
  - /mnt
  - /var/tmp
+runon_networks:
+ - 192.168.0.0/16
  """
 
     def __init__(self, logger, cfg_dir='/etc/rbackup'):
