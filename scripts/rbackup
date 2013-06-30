@@ -11,6 +11,7 @@ from rbackup.config         import Configuration
 from rbackup.filesystems    import Filesystems
 from rbackup.lvm            import LVM
 from rbackup.duplicity      import Duplicity
+from rbackup.networking     import Networking
 
 __description__ = 'Duplicity wrapper'
 
@@ -90,6 +91,13 @@ def main():
 
     config.update()
 
+    networking = Networking(logger)
+    remote_transports = networking.server_is_alive(config['remote_host'])
+    if not remote_transports['ipv4'] and not remote_transports['ipv6']:
+        logger.error('{0} is unreachable'.format(config['remote_host']))
+        return 1
+
+    """
     filesystems = Filesystems(logger)
     lvm = LVM(logger, filesystems, args.use_snapshots, args.snap_size)
     duplicity = Duplicity(logger, config)
@@ -108,6 +116,8 @@ def main():
     if args.use_snapshots in ['yes', 'auto']:
         os.chdir('/')
         lvm.cleanup_snapshots()
+
+    """
 
     return
 
