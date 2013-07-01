@@ -13,7 +13,7 @@ from rbackup.filesystems    import Filesystems
 from rbackup.lvm            import LVM
 from rbackup.duplicity      import Duplicity
 from rbackup.networking     import Networking
-from rbackup.processes      import Processes
+from rbackup.pkgmgr         import PackageManager
 
 __description__ = 'Duplicity wrapper'
 
@@ -31,6 +31,8 @@ ll2str = {
     40: 'ERROR',
     50: 'CRITICAL'
 }
+
+MAX_PKGMGR_WAIT=300
 
 def main():
     parser = argparse.ArgumentParser(description=__description__)
@@ -103,14 +105,15 @@ def main():
         logger.error('{0} is unreachable'.format(config['remote_host']))
         return 1
 
-    processes = Processes(logger)
+    pkgmgr = PackageManager(logger)
     t = 0
-    while processes.has_running_pkgmgr():
+    while pkgmgr.has_running_pkgmgr():
         if t >= MAX_PKGMGR_WAIT:
             logger.error('waited {0} seconds for package manager, aborting')
             return 1
 
         t += 1
+        logger.debug('waiting for package manager')
         time.sleep(1.0)
 
     """
