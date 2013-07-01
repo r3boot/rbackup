@@ -40,8 +40,8 @@ runon_networks:
  - 192.168.0.0/16
  """
 
-    def __init__(self, logger, cfg_dir='/etc/rbackup'):
-        BaseClass.__init__(self, logger)
+    def __init__(self, output, cfg_dir='/etc/rbackup'):
+        BaseClass.__init__(self, output)
         self._cfg_dir = cfg_dir
         self._cfg_file = cfg_dir + '/config.yaml'
         self._identity = cfg_dir + '/id_rsa'

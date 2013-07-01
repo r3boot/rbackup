@@ -13,8 +13,8 @@ class Networking(BaseClass):
     _re_ipv4_address = re.compile('^[0-9]: [A-Za-z0-9-_]* +inet\ ([0-9./]*) .* scope global')
     _re_ipv6_address = re.compile('^[0-9]: [A-Za-z0-9-_]* +inet6\ ([0-9a-f:/]*) scope global')
 
-    def __init__(self, logger, config):
-        BaseClass.__init__(self, logger)
+    def __init__(self, output, config):
+        BaseClass.__init__(self, output)
         self._cfg = config
         self._ipcalc = IPCalc()
 

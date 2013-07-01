@@ -6,8 +6,8 @@ from rbackup import BaseClass
 
 class Filesystems(BaseClass):
     _re_mount = re.compile('^(/dev/.*)\ (/[a-zA-Z0-9-_\./]*)\ ([a-z0-9]*)\ .*')
-    def __init__(self, logger):
-        BaseClass.__init__(self, logger)
+    def __init__(self, output):
+        BaseClass.__init__(self, output)
         self._filesystems = {}
         self.update()
 

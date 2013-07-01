@@ -13,8 +13,8 @@ class PackageManager(BaseClass):
         'pak',
         'makeinstall'
     ]
-    def __init__(self, logger):
-        BaseClass.__init__(self, logger)
+    def __init__(self, output):
+        BaseClass.__init__(self, output)
 
     def is_package_manager(self, cmdline):
         for pkgmgr in self._package_managers:

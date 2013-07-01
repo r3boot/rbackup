@@ -9,8 +9,8 @@ from rbackup import BaseClass
 class Duplicity(BaseClass):
     _re_identityfile = re.compile('.*IdentityFile[\ \t]+(/.*)')
 
-    def __init__(self, logger, config):
-        BaseClass.__init__(self, logger)
+    def __init__(self, output, config):
+        BaseClass.__init__(self, output)
         self._cfg = config
         self._destination = 'rsync://{0}/{1}'.format(
                 self._cfg['remote_host'], self._cfg['remote_path'])

@@ -14,9 +14,9 @@ class LVM(BaseClass):
     _re_vg_free_pe = re.compile('\ +Free  PE / Size.*\ ([0-9]+)\ .*')
     _re_lvs_snapshot = re.compile('\ +([a-zA-Z0-9]+)_([0-9]+)\ .*')
 
-    def __init__(self, logger, filesystems, use_snapshots='auto', snap_size=1,
+    def __init__(self, output, filesystems, use_snapshots='auto', snap_size=1,
             vg_name=None, snap_dir='/.snapshot'):
-        BaseClass.__init__(self, logger)
+        BaseClass.__init__(self, output)
         self._filesystems = filesystems
         self._vg_name = vg_name
         self._snap_size = snap_size
