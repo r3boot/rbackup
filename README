@@ -1,0 +1,24 @@
+
+ +-------------------------------------------------+
+ | rbackup -- Yet another wrapper around duplicity |
+ +-------------------------------------------------+
+
+==> What is it
+This is a python wrapper around duplicity, using LVM snapshots and desktop
+notifications using notificationd (http://github.com/r3boot/notificationd).
+It is made for laptops which not always have access to a private backup server.
+
+==> Features
+* Automatic detection of full/incremental backups
+* Automatic configuration of configuration and ssh keys
+* YAML based configuration
+* LVM snapshots and cleanup
+* Aborts if not running in a trusted network
+* Desktop notifications
+
+==> Usage
+$ cd rbackup
+$ sudo python setup.py install
+$ sudo rbackup --setup
+$ sudo vi /etc/rbackup/config.yaml
+$ sudo rbackup
