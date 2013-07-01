@@ -10,6 +10,10 @@ class BaseClass:
         setattr(self, 'debug', output.debug)
         setattr(self, 'warning', output.warning)
         setattr(self, 'error', output.error)
+        setattr(self, 'low', output.low)
+        setattr(self, 'normal', output.normal)
+        setattr(self, 'critical', output.critical)
+
 
     def path_to_name(self, path=None):
         if not path:

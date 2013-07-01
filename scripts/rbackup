@@ -118,24 +118,21 @@ def main():
     lvm = LVM(output, filesystems, args.use_snapshots, args.snap_size)
     duplicity = Duplicity(output, config)
 
+    os.chdir('/')
+
     if args.cleanup_snapshots:
         lvm.cleanup_snapshots()
         return
     elif args.use_snapshots in ['yes', 'auto']:
-        snapshot_timestamp = lvm.create_snapshots()
+        lvm.cleanup_snapshots()
+        lvm.create_snapshots()
         os.chdir('/.snapshot')
-    else:
-        os.chdir('/')
 
     duplicity.backup('.')
 
     if args.use_snapshots in ['yes', 'auto']:
         os.chdir('/')
         lvm.cleanup_snapshots()
-
-    output.normal('{0} Backup completed'.format(
-        datetime.datetime.now().strftime('%H:%M')),
-        'No errors were reported')
 
     return
 

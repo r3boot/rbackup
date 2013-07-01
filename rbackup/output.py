@@ -47,14 +47,14 @@ class Output:
         self._logger.error(msg)
         sys.exit(1)
 
-    def low(self, title, msg=None):
+    def low(self, title, msg=''):
         self._notificationd.low(title, msg)
         self.debug('{0}: {1}'.format(title, msg))
 
-    def normal(self, title, msg=None):
+    def normal(self, title, msg=''):
         self._notificationd.normal(title, msg)
         self.info('{0}: {1}'.format(title, msg))
 
-    def critical(self, title, msg=None):
+    def critical(self, title, msg=''):
         self._notificationd.critical(title, msg)
         self.error('{0}: {1}'.format(title, msg))

@@ -23,7 +23,6 @@ class Duplicity(BaseClass):
         return self.run(cmd + options)
 
     def _duplicity(self, options):
-        #cmd = ['strace', '-f', '-o', '/tmp/out', '-s 4096', 'duplicity']
         cmd = ['duplicity']
         return self.run(cmd + options)
 
@@ -91,11 +90,11 @@ class Duplicity(BaseClass):
         result = self._duplicity(duplicity_options)
 
     def full_backup(self, path):
-        self.info('starting full backup')
+        self.normal('Starting full backup')
         self.run_duplicity_backup('full', path)
 
     def incremental_backup(self, path):
-        self.info('starting incremental backup')
+        self.normal('Starting incremental backup')
         self.run_duplicity_backup('incr', path)
 
     def backup(self, path=None):
@@ -123,4 +122,4 @@ class Duplicity(BaseClass):
         else:
             self.incremental_backup(path)
 
-        self.info('backup completed')
+        self.normal('Backup completed')
