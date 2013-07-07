@@ -49,12 +49,21 @@ class Output:
 
     def low(self, title, msg=''):
         self._notificationd.low(title, msg)
-        self.debug('{0}: {1}'.format(title, msg))
+        if len(msg) > 0:
+            self.debug('{0}: {1}'.format(title, msg))
+        else:
+            self.debug('{0}'.format(title))
 
     def normal(self, title, msg=''):
         self._notificationd.normal(title, msg)
-        self.info('{0}: {1}'.format(title, msg))
+        if len(msg) > 0:
+            self.info('{0}: {1}'.format(title, msg))
+        else:
+            self.info('{0}'.format(title))
 
     def critical(self, title, msg=''):
         self._notificationd.critical(title, msg)
-        self.error('{0}: {1}'.format(title, msg))
+        if len(msg) > 0:
+            self.error('{0}: {1}'.format(title, msg))
+        else:
+            self.error('{0}'.format(title))

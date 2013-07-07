@@ -1,3 +1,4 @@
+# TODO: make subprocess management more intelligent
 # TODO: add check for full backup, restrict to fast networks
 # TODO: add script to recreate excluded directories
 # TODO: add logging to file
