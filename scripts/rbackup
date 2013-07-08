@@ -120,7 +120,6 @@ def main():
 
     os.chdir('/')
 
-    """
     if args.cleanup_snapshots:
         lvm.cleanup_snapshots()
         return
@@ -128,15 +127,12 @@ def main():
         lvm.cleanup_snapshots()
         lvm.create_snapshots()
         os.chdir('/.snapshot')
-    """
     
-    duplicity.backup('/var/empty')
+    duplicity.backup('.')
 
-    """
     if args.use_snapshots in ['yes', 'auto']:
         os.chdir('/')
         lvm.cleanup_snapshots()
-    """
 
     return
 

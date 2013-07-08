@@ -26,7 +26,10 @@ class PackageManager(BaseClass):
         pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]
 
         for pid in pids:
-            cmdline = open(os.path.join('/proc', pid, 'cmdline'), 'rb').read()
+            try:
+                cmdline = open(os.path.join('/proc', pid, 'cmdline'), 'rb').read()
+            except IOError, errmsg:
+                self.warning(errmsg)
             if self.is_package_manager(cmdline):
                 return True
 
