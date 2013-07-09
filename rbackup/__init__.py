@@ -26,10 +26,18 @@ class BaseClass:
         return path.replace('/', '_')
 
     def run(self, cmdline):
-        self.debug(' '.join(cmdline))
-        proc = subprocess.Popen(cmdline, stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT)
-        proc.wait()
-        output = proc.stdout.readlines()
-        if len(output) > 0:
-            return ''.join(output)
+        self.debug(cmdline)
+
+        proc = subprocess.Popen(cmdline, shell=True, stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE)
+
+        output = []
+        for raw_line in proc.communicate():
+            if len(raw_line) == 0:
+                continue
+            for line in raw_line.split('\n'):
+                if len(line) == 0:
+                    continue
+                output.append(line)
+
+        return (proc.returncode, output)

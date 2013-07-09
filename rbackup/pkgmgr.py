@@ -28,8 +28,9 @@ class PackageManager(BaseClass):
         for pid in pids:
             try:
                 cmdline = open(os.path.join('/proc', pid, 'cmdline'), 'rb').read()
-            except IOError, errmsg:
-                self.warning(errmsg)
+            except IOError:
+                # process has vanished
+                continue
             if self.is_package_manager(cmdline):
                 return True
 

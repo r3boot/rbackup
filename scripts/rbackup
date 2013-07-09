@@ -22,7 +22,6 @@ __description__ = 'Duplicity wrapper'
 _d_debug = False
 _d_setup = False
 _d_use_snapshots = 'auto'
-_d_volumegroup = 'vg00'
 _d_snapshot_size = 1
 _d_cleanup_snapshots = False
 
@@ -41,23 +40,10 @@ def main():
     parser.add_argument('-D', dest='debug', action='store_true',
         default=_d_debug, help='Enable debugging')
 
-    parser.add_argument('-s', metavar='OPTION', dest='use_snapshots',
-        action='store', default=_d_use_snapshots,
-        help='Enable snapshotted backups (auto/yes/no) [{0}]'.format(
-            _d_use_snapshots))
-
-    parser.add_argument('-V', metavar='VGNAME', dest='volumegroup',
-        action='store', default=_d_volumegroup,
-        help='Volume group for snapshots [{0}]'.format(_d_volumegroup))
-
-    parser.add_argument('--ssize', metavar='SIZE', dest='snap_size',
-        action='store', type=int, default=_d_snapshot_size,
-        help='Size of a snapshot in GB [{0}]'.format(_d_snapshot_size))
-
     parser.add_argument('--setup', dest='setup', action='store_true',
         default=_d_setup, help='Setup SSH configuration')
 
-    parser.add_argument('--scleanup', dest='cleanup_snapshots',
+    parser.add_argument('--cleanup', dest='cleanup_snapshots',
         action='store_true', default=_d_cleanup_snapshots,
         help='Cleanup all leftover snapshots')
 
@@ -115,7 +101,9 @@ def main():
         time.sleep(1.0)
 
     filesystems = Filesystems(output)
-    lvm = LVM(output, filesystems, args.use_snapshots, args.snap_size)
+    lvm = LVM(output, filesystems, config['use_snapshots'],
+            config['snapshot_size'])
+
     duplicity = Duplicity(output, config)
 
     os.chdir('/')
@@ -123,12 +111,12 @@ def main():
     if args.cleanup_snapshots:
         lvm.cleanup_snapshots()
         return
-    elif args.use_snapshots in ['yes', 'auto']:
+    elif config['use_snapshots'] in ['yes', 'auto']:
         lvm.cleanup_snapshots()
         lvm.create_snapshots()
         os.chdir('/.snapshot')
-    
-    duplicity.backup('.')
+
+    duplicity.backup('/var/empty')
 
     if args.use_snapshots in ['yes', 'auto']:
         os.chdir('/')

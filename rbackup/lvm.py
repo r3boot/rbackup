@@ -1,7 +1,6 @@
 
 import os
 import re
-import shlex
 import time
 
 from rbackup import BaseClass
@@ -42,8 +41,8 @@ class LVM(BaseClass):
 
     def get_vgs(self):
         vgs = []
-        results = self.run(['vgs'])
-        for line in results.split('\n')[1:]:
+        (retcode, output) = self.run('vgs')
+        for line in output[1:]:
             try:
                 vgs.append(line.split()[0])
             except IndexError:
@@ -52,8 +51,8 @@ class LVM(BaseClass):
 
     def get_lvs(self, vg):
         lvs = []
-        results = self.run(['lvs'])
-        for line in results.split('\n')[1:]:
+        (retcode, output) = self.run('lvs')
+        for line in output[1:]:
             try:
                 lvs.append(line.split()[0])
             except IndexError:
@@ -61,16 +60,14 @@ class LVM(BaseClass):
         return lvs
 
     def is_lv(self, name):
-        if '/mapper/' in name:
-            name = self.shorten_mapper_path(name)
-
-        cmd = ['lvdisplay', name]
-        result = self.run(cmd)
-        return len(result.split('\n')) > 3
+        cmd = 'lvdisplay {0}'.format(name)
+        (retcode, result) = self.run(cmd)
+        return len(result) > 3
 
     def list_snapshots(self):
         snapshot_timestamps = []
-        for line in self.run(['lvs']).split('\n'):
+        (retcode, output) = self.run('lvs')
+        for line in output:
             match = self._re_lvs_snapshot.search(line)
             if match:
                 timestamp = match.group(2)
@@ -80,11 +77,11 @@ class LVM(BaseClass):
         return snapshot_timestamps
 
     def get_free_vg_space(self, vg_name):
-        cmd = ['vgdisplay', vg_name]
-        result = self.run(cmd)
+        cmd = 'vgdisplay {0}'.format(vg_name)
+        (retcode, output) = self.run(cmd)
         pe_size = 0
         free_pe = -1
-        for line in result.split('\n'):
+        for line in output:
             match = self._re_no_such_vg.search(line)
             if match:
                 self.error('no such VG: {0}'.format(vg_name))
@@ -105,12 +102,18 @@ class LVM(BaseClass):
     def mksnapshot(self, mountpoint, mount_data, timestamp):
         snap_mountpoint = self._snap_dir + mountpoint
 
-        lv_name = os.path.basename(self._filesystems[mountpoint]['device'])
+        device = self._filesystems[mountpoint]['device']
+        if '/mapper/' in device:
+            lv_name = os.path.basename(device).split('-')[1]
+        else:
+            lv_name = os.path.basename(device)
+        print('device: {0}; lv_name: {1}'.format(device, lv_name))
 
         snap_lv_name = '{0}_{1}'.format(lv_name, timestamp)
         snap_lv_device = '{0}_{1}'.format(
                 self._filesystems[mountpoint]['device'], timestamp)
 
+        self.debug('snap_lv_name: {0}'.format(snap_lv_name))
         if not os.path.exists(mountpoint):
             self.error('{0} not found'.format(mountpoint))
 
@@ -118,25 +121,25 @@ class LVM(BaseClass):
             self.warning('snapshot already exists')
             return
 
-        cmd = 'lvcreate -L {0}G -s -n {1} {2}'.format(
+        cmd = 'lvcreate -L {0}M -s -n {1} {2}'.format(
             self._snap_size,
             snap_lv_name,
             mount_data['device'])
-        self.run(shlex.split(cmd))
-        #print(cmd)
+
+        self.run(cmd)
 
         if mount_data['fstype'] == 'xfs':
             cmd = 'mount -o ro,nouuid {0} {1}'.format(snap_lv_device,
                     snap_mountpoint)
         else:
             cmd = 'mount -o ro {0} {1}'.format(snap_lv_device, snap_mountpoint)
-        self.run(shlex.split(cmd))
-        #print(cmd)
+
+        self.run(cmd)
 
     def do_bind_mount(self, mountpoint):
         snap_mountpoint = self._snap_dir + mountpoint
         cmd = 'mount --bind -o ro {0} {1}'.format(mountpoint, snap_mountpoint)
-        self.run(shlex.split(cmd))
+        self.run(cmd)
 
     def create_snapshots(self):
         mountpoints = self._filesystems.keys()
@@ -145,7 +148,7 @@ class LVM(BaseClass):
         free_vg_space = self.get_free_vg_space(self._vg_name)
 
         num_filesystems = len(self._filesystems.keys())
-        if (num_filesystems * self._snap_size) > (free_vg_space / 1024):
+        if (num_filesystems * self._snap_size) > (free_vg_space):
             self.error('not enough free space in VG {0}'.format(self._vg_name))
 
         if not os.path.exists(self._snap_dir):
@@ -176,7 +179,7 @@ class LVM(BaseClass):
                 if mountpoint.endswith('/'):
                     mountpoint = mountpoint[:len(mountpoint)-1]
                 cmd = 'umount -f {0}'.format(mountpoint)
-                self.run(shlex.split(cmd))
+                self.run(cmd)
 
         self._filesystems.update()
         mountpoints = self._filesystems.keys()
@@ -189,4 +192,5 @@ class LVM(BaseClass):
                 snap_device = '{0}_{1}'.format(device, timestamp)
                 if self.is_lv(snap_device):
                     cmd = 'lvremove -f {0}'.format(snap_device)
-                    self.run(shlex.split(cmd))
+                    print(cmd)
+                    self.run(cmd)

@@ -35,7 +35,8 @@ class Filesystems(BaseClass):
             if not match:
                 continue
 
-            device = self.shorten_mapper_path(match.group(1))
+            # device = self.shorten_mapper_path(match.group(1))
+            device = match.group(1)
             mountpoint = match.group(2)
             fstype = match.group(3)
             filesystems[mountpoint] = {

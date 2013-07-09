@@ -40,10 +40,8 @@ class Duplicity(BaseClass):
                 self._cfg['remote_host'], self._cfg['remote_path'])
 
     def _ssh(self, options):
-        cmd = 'ssh -F {0} {1}'.format(self._cfg['ssh_config'],
+        cmd = 'ssh -F {0} {1} '.format(self._cfg['ssh_config'],
                 self._cfg['remote_host'])
-        cmd = shlex.split(cmd)
-        options = shlex.split(options)
         return self.run(cmd + options)
 
 
@@ -104,8 +102,8 @@ class Duplicity(BaseClass):
     def get_number_of_incrementals(self):
         cmd = 'ls {0}/*-inc*.manifest 2>/dev/null | wc -l'.format(
                 self._cfg['remote_path'])
-        result = self._ssh(cmd)
-        return int(result)
+        (retcode, output) = self._ssh(cmd)
+        return int(output[0])
 
     def run_duplicity_backup(self, backup_type, path):
         stats = {}
@@ -188,6 +186,7 @@ class Duplicity(BaseClass):
         else:
             stats = self.incremental_backup(path)
 
+        pprint.pprint(stats)
         output = 'E:{0}, T:{1}, S:{2}, C:{3}, D:{4}, N:{5}'.format(
             stats['errors'],
             time.strftime('%H:%M:%S', time.gmtime(stats['elapsed_time'])),

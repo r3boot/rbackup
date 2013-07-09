@@ -13,8 +13,6 @@ class Configuration(BaseClass):
     _re_identity = re.compile('.*IdentityFile (/.*)$')
     _ssh_config_template = """Host %HOST%
   User %USER%
-  GSSAPIAuthentication no
-  ControlMaster no
   ServerAliveInterval 15
   IdentityFile %IDENTITY%
   Ciphers blowfish-cbc,aes256-cbc"""
@@ -25,6 +23,7 @@ remote_user: %USER%
 remote_path: %PATH%
 ssh_config: /etc/rbackup/ssh_config
 use_snapshots: auto
+snapshot_size: 1024
 max_incrementals: 6
 excluded:
  - /dev
@@ -119,12 +118,12 @@ runon_networks:
                   + ' -C "rbackup@{0}"'.format(socket.gethostname()) \
                   + ' -f {0}'.format(self._identity) \
                   + ' -N ""'
-            self.run(shlex.split(cmd))
+            self.run(cmd)
 
             self.info('copying ssh key to {0}@{1}'.format(user, host))
             cmd = 'ssh-copy-id -i /etc/rbackup/id_rsa {0}@{1}'.format(
                     user, host)
-            self.run(shlex.split(cmd))
+            self.run(cmd)
         else:
             self.warning('{0} already exists, not overwriting'.format(
                 self._identity))

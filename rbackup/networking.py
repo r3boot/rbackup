@@ -65,11 +65,11 @@ class Networking(BaseClass):
     def get_ipaddresses(self):
         addresses = []
         command_line = '/sbin/ip -o address show'
-        output = self.run(shlex.split(command_line))
+        (retcode, output) = self.run(command_line)
         if not output:
             return []
 
-        for line in output.split('\n'):
+        for line in output:
             match = self._re_ipv4_address.search(line)
             if match:
                 address = match.group(1)
