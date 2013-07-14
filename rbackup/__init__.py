@@ -1,10 +1,11 @@
 
+import math
 import sys
 import subprocess
 
-#import pynotify
-
 class BaseClass:
+    _unit_list = zip(['B', 'kB', 'MB', 'GB', 'TB', 'PB'], [0, 0, 1, 2, 2, 2])
+
     def __init__(self, output):
         setattr(self, 'info', output.info)
         setattr(self, 'debug', output.debug)
@@ -41,3 +42,16 @@ class BaseClass:
                 output.append(line)
 
         return (proc.returncode, output)
+
+    def human_byte(self, num):
+        """Human friendly file size"""
+        if num > 1:
+            exponent = min(int(math.log(num, 1024)), len(self._unit_list) - 1)
+            quotient = float(num) / 1024**exponent
+            unit, num_decimals = self._unit_list[exponent]
+            format_string = '{:.%sf}{}' % (num_decimals)
+            return format_string.format(quotient, unit)
+        if num == 0:
+            return '0B'
+        if num == 1:
+            return '1B'

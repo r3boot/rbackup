@@ -42,7 +42,8 @@ class Duplicity(BaseClass):
     def _ssh(self, options):
         cmd = 'ssh -F {0} {1} '.format(self._cfg['ssh_config'],
                 self._cfg['remote_host'])
-        return self.run(cmd + options)
+        (returncode, output) = self.run(cmd + options)
+        return output
 
 
     def _duplicity(self, options):
@@ -72,9 +73,13 @@ class Duplicity(BaseClass):
                         if key in ['elapsed_time', 'end_time', 'start_time']:
                             value = float(match.group(1))
                         elif key in ['last_full']:
-                            struct_t = time.strptime(match.group(1),
-                                    '%a %b %d %H:%M:%S %Y')
-                            value = time.mktime(struct_t)
+                            value = match.group(1)
+                            if value == 'none':
+                                value = None
+                            else:
+                                struct_t = time.strptime(match.group(1),
+                                        '%a %b %d %H:%M:%S %Y')
+                                value = time.mktime(struct_t)
                         else:
                             value = int(match.group(1))
 
@@ -102,7 +107,7 @@ class Duplicity(BaseClass):
     def get_number_of_incrementals(self):
         cmd = 'ls {0}/*-inc*.manifest 2>/dev/null | wc -l'.format(
                 self._cfg['remote_path'])
-        (retcode, output) = self._ssh(cmd)
+        output = self._ssh(cmd)
         return int(output[0])
 
     def run_duplicity_backup(self, backup_type, path):
@@ -186,11 +191,13 @@ class Duplicity(BaseClass):
         else:
             stats = self.incremental_backup(path)
 
-        pprint.pprint(stats)
+        if len(stats) == 0:
+            self.critical('Backup failed', 'Unknown error')
+
         output = 'E:{0}, T:{1}, S:{2}, C:{3}, D:{4}, N:{5}'.format(
             stats['errors'],
             time.strftime('%H:%M:%S', time.gmtime(stats['elapsed_time'])),
-            stats['dest_size_change'],
+            self.human_byte(stats['dest_size_change']),
             stats['changed_files'],
             stats['deleted_files'],
             stats['new_files'],

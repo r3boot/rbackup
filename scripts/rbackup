@@ -116,9 +116,9 @@ def main():
         lvm.create_snapshots()
         os.chdir('/.snapshot')
 
-    duplicity.backup('/var/empty')
+    duplicity.backup('/people/r3boot/bin')
 
-    if args.use_snapshots in ['yes', 'auto']:
+    if config['use_snapshots'] in ['yes', 'auto']:
         os.chdir('/')
         lvm.cleanup_snapshots()
 
